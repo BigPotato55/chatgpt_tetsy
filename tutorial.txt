@@ -1,0 +1,110 @@
+PORADNIK: Instalacja LineXinBar jako osobnej sesji w Arch Linux
+=====================================================================
+
+Autor poradnika: ChatGPT (AI)
+Repozytorium: https://github.com/BigPotato55/chatgpt_tetsy
+
+Cel
+---
+Zainstalować LineXinBar jako osobną sesję Wayland widoczną w SDDM, zachowując KDE Plasma jako drugą sesję. Ten poradnik opisuje przebieg dla projektu LineXinBar w katalogu ~/LineXinBar i pakietów w wersji 0.9.3-1.
+
+Uwaga
+-----
+Wykonuj polecenia na własną odpowiedzialność i czytaj podsumowanie transakcji pacmana przed zatwierdzeniem. Nie usuwaj plików sesji KDE Plasma. Testy projektu w tej konfiguracji nie przechodziły w całości; pakiety zostały zbudowane z opcją --nocheck, która pomija etap testów. Nie oznacza to, że błędy testów zostały naprawione. Przed uznaniem instalacji za w pełni działającą należy przetestować logowanie i działanie sesji.
+
+1. Przygotowanie narzędzi
+------------------------
+Na Arch Linux zaktualizuj system i zainstaluj narzędzia potrzebne do budowania:
+
+    sudo pacman -Syu
+    sudo pacman -S --needed git base-devel rustup clang pkgconf
+    rustup default stable
+
+Wersje pakietów i wymagania projektu mogą się zmieniać.
+
+2. Pobranie projektu
+--------------------
+Jeżeli repozytorium LineXinBar nie jest jeszcze pobrane, sklonuj oficjalny projekt:
+
+    git clone https://github.com/Petexy/LineXinBar.git
+    cd LineXinBar
+
+Jeśli masz już projekt w ~/LineXinBar, przejdź do niego:
+
+    cd ~/LineXinBar
+
+3. Budowanie pakietów Arch
+--------------------------
+Wykorzystany skrypt budujący:
+
+    ./packaging/build.sh arch --work-dir /var/tmp/linexinbar -- --syncdeps --nocheck
+
+Opcja --syncdeps pozwala makepkg rozwiązać zależności budowania. Opcja --nocheck pomija testy pakietu. W omawianym przypadku pełne testy zgłaszały dwa niepowodzenia, dlatego przed użyciem pakietów należy pamiętać, że testy nie potwierdziły poprawności całego projektu.
+
+Pakiety wynikowe zostały zapisane w:
+
+    ~/LineXinBar/packaging/out/arch/
+
+Sprawdź ich obecność:
+
+    find ~/LineXinBar/packaging/out/arch -type f -name '*.pkg.tar.*'
+
+W tym przebiegu utworzono m.in.:
+    lxb-compositor-0.9.3-1-x86_64.pkg.tar.zst
+    lxb-desktop-0.9.3-1-x86_64.pkg.tar.zst
+
+Pozostałe pakiety, takie jak lxb-retroarch, lxb-heroic i lxb-rpcs3, są opcjonalnymi integracjami.
+
+4. Instalacja podstawowych pakietów
+-----------------------------------
+Z katalogu z pakietami zainstaluj kompozytor i pulpit:
+
+    cd ~/LineXinBar/packaging/out/arch
+    sudo pacman -U ./lxb-compositor-0.9.3-1-x86_64.pkg.tar.zst ./lxb-desktop-0.9.3-1-x86_64.pkg.tar.zst
+
+Przejrzyj listę pakietów i zależności wyświetloną przez pacmana przed potwierdzeniem instalacji.
+
+5. Sprawdzenie wpisu sesji
+--------------------------
+Sprawdź, czy wpis sesji Wayland i skrypt startowy zostały zainstalowane:
+
+    ls -l /usr/share/wayland-sessions/
+    command -v lxb-session
+
+Oczekiwane elementy:
+    /usr/share/wayland-sessions/lxb.desktop
+    /usr/bin/lxb-session
+
+Plik plasma.desktop powinien pozostać na miejscu, dzięki czemu KDE Plasma nadal będzie dostępne jako osobna sesja.
+
+6. Uruchomienie sesji przez SDDM
+--------------------------------
+1. Zapisz pracę we wszystkich otwartych programach.
+2. Wyloguj się z bieżącej sesji KDE Plasma.
+3. Na ekranie logowania SDDM wybierz sesję LineXinBar.
+4. Zaloguj się i sprawdź, czy pulpit uruchamia się prawidłowo.
+
+Jeśli sesja nie startuje, wróć do KDE Plasma z menu sesji SDDM. Nie usuwaj pliku plasma.desktop. Zbierz diagnostykę z logów bieżącego uruchomienia, np.:
+
+    journalctl -b --no-pager | grep -iE 'lxb|linexinbar|sddm|wayland'
+
+Wynik może zawierać dużo informacji; sprawdź go przed udostępnieniem publicznie i usuń ewentualne dane prywatne.
+
+7. Przydatne kontrole
+---------------------
+Sprawdzenie pliku sesji:
+
+    cat /usr/share/wayland-sessions/lxb.desktop
+
+Sprawdzenie polecenia startowego:
+
+    command -v lxb-session
+    ls -l /usr/bin/lxb-session
+
+W razie aktualizacji lub przebudowy projektu zweryfikuj nazwy i wersje pakietów, ponieważ mogą się zmienić.
+
+Stan na moment napisania
+------------------------
+Pakiety lxb-compositor i lxb-desktop zostały zbudowane i zainstalowane. Wpis lxb.desktop oraz polecenie /usr/bin/lxb-session były obecne, a plasma.desktop pozostał w katalogu sesji. Samo zalogowanie do sesji LineXinBar wymaga osobnego testu — nie należy traktować samej obecności plików jako potwierdzenia, że sesja działa poprawnie.
+
+Ten poradnik został przygotowany przez AI (ChatGPT) na podstawie przebiegu instalacji i konfiguracji opisanej w rozmowie.
